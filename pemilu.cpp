@@ -544,16 +544,16 @@ public:
         if (it == voters.end()) {
             // NIK not found, auto-register
             voters[nik] = false;
-            cout << "\n" << string(50, '-') << "\n";
+        cout << "\n" << string(50, '-') << "\n";
             cout << "NIK " << nik << " berhasil didaftarkan secara otomatis.\n";
-            cout << string(50, '-') << "\n";
+        cout << string(50, '-') << "\n";
             return VoteStatus::NotVoted;
-        }
-        
+    }
+
         if (it->second) {
-            cout << "\n" << string(50,'*') << "\n";
+                cout << "\n" << string(50,'*') << "\n";
             cout << "ERROR: NIK " << nik << " sudah melakukan voting!\n";
-            cout << string(50,'*') << "\n";
+                cout << string(50,'*') << "\n";
             return VoteStatus::AlreadyVoted;
         }
         
@@ -570,15 +570,15 @@ public:
         }
         
         if (it->second) {
-            cout << "\n" << string(50,'*') << "\n";
-            cout << "NIK " << nik << " sudah ditandai sebagai sudah voting!\n";
-            cout << string(50,'*') << "\n";
-        } else {
+                    cout << "\n" << string(50,'*') << "\n";
+                    cout << "NIK " << nik << " sudah ditandai sebagai sudah voting!\n";
+                    cout << string(50,'*') << "\n";
+                } else {
             it->second = true;
-            cout << "\n" << string(50, '-') << "\n";
-            cout << "NIK " << nik << " berhasil ditandai sebagai sudah voting.\n";
-            cout << string(50, '-') << "\n";
-        }
+                    cout << "\n" << string(50, '-') << "\n";
+                    cout << "NIK " << nik << " berhasil ditandai sebagai sudah voting.\n";
+                    cout << string(50, '-') << "\n";
+                }
     }
 };
 
@@ -657,7 +657,7 @@ bool verifikasiAdmin(const string& username, const string& password);
 void menuAdmin(vector<Kandidat>& kandidat);
 void verifikasiDataVoting();
 void auditTrailVoting();
-void kelolaAdmin();
+void tampilkanRantaiVoting();  // Tambahkan deklarasi ini
 void tambahKandidat(vector<Kandidat>& kandidat);
 void hapusKandidat(vector<Kandidat>& kandidat);
 void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat);
@@ -666,6 +666,7 @@ void setColor(int color);
 void tampilkanMenu();
 bool isValidNIK(const string& nik);
 bool safeWriteToFile(const string& filename, const string& content);
+void logError(const string& msg);
 
 // Implementasi fungsi-fungsi
 void tungguInput() {
@@ -680,100 +681,102 @@ bool verifikasiAdmin(const string& username, const string& password) {
     return adminTable.verifyAdmin(username, password);
 }
 
-void tampilkanMenuAdmin() {
-    cout << "\n" << string(60, '=') << "\n";
-    cout << "                        ADMIN MENU                       \n";
-    cout << string(60, '=') << "\n";
-    cout << "│                                                          │\n";
-    cout << "│                  1. Verifikasi Data Voting               │\n";
-    cout << "│                  2. Audit Trail Voting                   │\n";
-    cout << "│                  3. Kelola Admin                         │\n";
-    cout << "│                  4. Kembali ke Menu Utama                │\n";
-    cout << "│                                                          │\n";
-    cout << string(60, '=') << "\n";
-    cout << "Pilihan: ";
-}
-
 void menuAdmin(vector<Kandidat>& kandidat) {
-    string username, password;
+    // Verifikasi login admin terlebih dahulu
     system("cls");
-    cout << "\nMasukkan username admin: ";
+    string username, password;
+    cout << "\n" << string(60, '=') << "\n";
+    cout << "                      LOGIN ADMIN                    \n";
+    cout << string(60, '=') << "\n\n";
+    
+    cout << "Username: ";
     cin >> username;
-    cout << "Masukkan password admin: ";
+    cout << "Password: ";
     cin >> password;
-
+    
     if (!verifikasiAdmin(username, password)) {
-        cout << "\nUsername atau password salah!\n";
+        cout << "\n" << string(50, '*') << "\n";
+        cout << "Akses ditolak! Username atau password salah.\n";
+        cout << string(50, '*') << "\n";
         tungguInput();
         return;
     }
 
-    int pilihan;
-    do {
+    cout << "\n" << string(50, '-') << "\n";
+    cout << "Login berhasil! Selamat datang, " << username << ".\n";
+    cout << string(50, '-') << "\n";
+    this_thread::sleep_for(chrono::seconds(1));
+
+    while (true) {
         system("cls");
-        cout << "\n" << string(60, '=') << "\n";
-        cout << "                    MENU ADMIN                    \n";
-        cout << string(60, '=') << "\n";
-        cout << "1. Dashboard Pemilu\n";
+        cout << "\n" << string(80, '=') << "\n";
+        cout << "                      MENU ADMIN PEMILU                    \n";
+        cout << string(80, '=') << "\n\n";
+        
+        cout << "1. Dashboard\n";
+        cout << "   - Ringkasan Statistik\n";
+        cout << "   - Distribusi Suara Per Kandidat\n";
+        cout << "   - Verifikasi Data Voting\n";
         cout << "2. Verifikasi & Audit\n";
-        cout << "3. Kembali ke Menu Utama\n";
-        cout << string(60, '=') << "\n";
-        cout << "Pilih menu (1-3): ";
-
-        if (!(cin >> pilihan)) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "\n" << string(50, '*') << "\n";
-            cout << "ERROR: Input tidak valid!\n";
-            cout << string(50, '*') << "\n";
-            continue;
+        cout << "   - Verifikasi Data Voting\n";
+        cout << "   - Audit Trail Voting\n";
+        cout << "   - Analisis Rantai Voting\n";
+        cout << "   - Detail Record Voting\n";
+        cout << "3. Kembali ke Menu Utama\n\n";
+        
+        cout << "Pilihan: ";
+        string choice;
+        cin >> choice;
+        
+        if (choice == "1") {
+            tampilkanDashboardAdmin(kandidat);
         }
-
-        switch (pilihan) {
-            case 1:
+        else if (choice == "2") {
+            while (true) {
                 system("cls");
-                tampilkanDashboardAdmin(kandidat);
-                break;
-            case 2: {
-                system("cls");
-                cout << "\n" << string(60, '=') << "\n";
-                cout << "              VERIFIKASI & AUDIT DATA              \n";
-                cout << string(60, '=') << "\n";
-                cout << "1. Verifikasi Data\n";
-                cout << "2. Audit Trail\n";
-                cout << "3. Kembali\n";
-                cout << string(60, '=') << "\n";
+                cout << "\n" << string(80, '=') << "\n";
+                cout << "                      VERIFIKASI & AUDIT                    \n";
+                cout << string(80, '=') << "\n\n";
+                
+                cout << "1. Verifikasi Data Voting\n";
+                cout << "2. Audit Trail Voting\n";
+                cout << "3. Analisis Rantai Voting\n";
+                cout << "4. Detail Record Voting\n";
+                cout << "5. Kembali ke Menu Admin\n\n";
                 cout << "Pilihan: ";
                 
-                int subPilihan;
-                cin >> subPilihan;
-                switch (subPilihan) {
-                    case 1:
-                        system("cls");
-                        verifikasiDataVoting();
-                        break;
-                    case 2:
-                        system("cls");
-                        auditTrailVoting();
-                        break;
-                    case 3:
-                        break;
-                    default:
-                        cout << "\nPilihan tidak valid!\n";
+                string subChoice;
+                cin >> subChoice;
+                
+                if (subChoice == "1") {
+                    verifikasiDataVoting();
                 }
-                break;
+                else if (subChoice == "2") {
+                    auditTrailVoting();
+                }
+                else if (subChoice == "3") {
+                    tampilkanRantaiVoting();
+                }
+                else if (subChoice == "4") {
+                    tampilkanDetailVoting();
+                }
+                else if (subChoice == "5") {
+                    break;
+                }
+                else {
+                    cout << "\nPilihan tidak valid!\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                }
             }
-            case 3:
-                cout << "\nKembali ke menu utama...\n";
-                break;
-            default:
-                system("cls");
-                cout << "\n" << string(50, '*') << "\n";
-                cout << "ERROR: Pilihan tidak valid!\n";
-                cout << string(50, '*') << "\n";
-                tungguInput();
         }
-    } while (pilihan != 3);
+        else if (choice == "3") {
+            return;
+        }
+        else {
+            cout << "\nPilihan tidak valid!\n";
+            this_thread::sleep_for(chrono::seconds(1));
+        }
+    }
 }
 
 // Fungsi enkripsi sederhana (Caesar Cipher dengan kunci acak)
@@ -921,16 +924,17 @@ pair<map<int, int>, vector<VoteData>> bacaSemuaVotes() {
 
 // Modifikasi fungsi tampilkanKandidat untuk mendukung semua metode sorting
 void tampilkanKandidat(vector<Kandidat>& kandidat, int sortMethod = 0) {
+    system("cls");
     cout << "\n" << string(60, '=') << "\n";
     cout << "         DAFTAR KANDIDAT PRESIDEN 2024         \n";
     cout << string(60, '=') << "\n\n";
 
     // Always use STL sort with lambda for consistency
-    sort(kandidat.begin(), kandidat.end(), 
-         [](const Kandidat& a, const Kandidat& b) {
-             return a.nomor < b.nomor;
-         });
-    cout << "Menggunakan STL Sort\n";
+            sort(kandidat.begin(), kandidat.end(), 
+                 [](const Kandidat& a, const Kandidat& b) {
+                     return a.nomor < b.nomor;
+                 });
+            cout << "Menggunakan STL Sort\n";
 
     // Tampilkan kandidat menggunakan method struct
     for_each(kandidat.begin(), kandidat.end(), 
@@ -941,6 +945,7 @@ void tampilkanKandidat(vector<Kandidat>& kandidat, int sortMethod = 0) {
 }
 // Modifikasi fungsi lakukanVoting
 void lakukanVoting(const vector<Kandidat>& kandidat) {
+    system("cls");
     cout << "\n" << string(60, '=') << "\n";
     cout << "                        VOTING SECTION                  \n";
     cout << string(60, '=') << "\n";
@@ -1054,25 +1059,22 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
 void tampilkanHasil(const vector<Kandidat>& kandidat) {
     system("cls");
     cout << "\n" << string(60, '=') << "\n";
-    cout << "         HASIL VOTING PRESIDEN 2029         \n";
+    cout << "                      HASIL VOTING                    \n";
     cout << string(60, '=') << "\n\n";
 
-    // Baca data voting untuk statistik
+    // Baca semua data voting untuk statistik
     auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
-    int totalAll     = allVotes.size();
-    int totalValid   = count_if(allVotes.begin(), allVotes.end(),
-                                [](auto& v){ return v.isValid; });
+    int totalAll = allVotes.size();
+    int totalValid = count_if(allVotes.begin(), allVotes.end(),
+                            [](const auto& v){ return v.isValid; });
     int totalInvalid = totalAll - totalValid;
-    cout << "Total Vote       : " << totalAll << " suara\n";
-    cout << "  - Vote Sah     : " << totalValid << " suara\n";
-    cout << "  - Vote Tidak Sah: " << totalInvalid << " suara\n\n";
-    
+
     // Tampilkan hasil per kandidat
     cout << "HASIL VOTING PER KANDIDAT:\n";
     cout << string(60, '-') << "\n";
     
-    if (totalAll==0) {
-        cout<<"Belum ada data voting untuk ditampilkan.\n";
+    if (totalAll == 0) {
+        cout << "Belum ada data voting untuk ditampilkan.\n";
         return;
     }
     
@@ -1102,177 +1104,303 @@ void tampilkanHasil(const vector<Kandidat>& kandidat) {
     }
     cout << "\n";
 
-    // Tampilkan detail record voting dengan data terenkripsi
-    cout << "\n" << string(80, '=') << "\n";
-    cout << "                    DETAIL RECORD VOTING (TERENKRIPSI)                    \n";
-    cout << string(80, '=') << "\n\n";
-
-    // Baca file votes.dat dan keys.dat untuk mendapatkan data terenkripsi
-    ifstream voteFile("votes.dat");
-    ifstream keyFile("keys.dat");
-    
-    if (voteFile.is_open() && keyFile.is_open()) {
-        string encryptedData;
-        int key;
-        vector<pair<string, int>> encryptedVotes; // (encrypted_data, key)
-        
-        // Baca semua data terenkripsi dan kuncinya
-        while (getline(voteFile, encryptedData) && keyFile >> key) {
-            if (!encryptedData.empty()) {
-                encryptedVotes.push_back({encryptedData, key});
-            }
-        }
-        voteFile.close();
-        keyFile.close();
-
-        // Urutkan berdasarkan waktu (dari yang terbaru)
-        sort(encryptedVotes.begin(), encryptedVotes.end(),
-             [](const pair<string, int>& a, const pair<string, int>& b) {
-                 string decryptedA = decryptData(a.first, a.second);
-                 string decryptedB = decryptData(b.first, b.second);
-                 
-                 VoteData voteA = VoteData::fromString(decryptedA);
-                 VoteData voteB = VoteData::fromString(decryptedB);
-                 
-                 return voteA.waktu > voteB.waktu;
-             });
-
-        // Tampilkan header tabel
-        setColor(11); // Cyan
-        cout << left << setw(16) << "NIK" 
-             << setw(20) << "Nama Pemilih" 
-             << setw(12) << "Pilihan" 
-             << setw(25) << "Waktu Voting" 
-             << "Status" << "\n";
-        cout << string(80, '-') << "\n";
-
-        // Fungsi untuk memotong string dan menambahkan "..."
-        auto truncateString = [](const string& str, size_t length) {
-            if (str.length() <= length) return str;
-            return str.substr(0, length - 3) + "...";
-        };
-
-        // Tampilkan data voting terenkripsi
-        for (const auto& [encryptedLine, key] : encryptedVotes) {
-            string decryptedData = decryptData(encryptedLine, key);
-            VoteData vote = VoteData::fromString(decryptedData);
-            
-            // Ambil bagian terenkripsi untuk NIK dan nama
-            string encryptedNIK = truncateString(encryptedLine.substr(0, encryptedLine.find('|')), 13);
-            string encryptedNama = truncateString(
-                encryptedLine.substr(encryptedLine.find('|') + 1, 
-                encryptedLine.find('|', encryptedLine.find('|') + 1) - encryptedLine.find('|') - 1), 
-                17);
-            
-            // Tampilkan data dengan NIK dan nama terenkripsi, pilihan dalam bentuk asli
-            setColor(7); // Default color
-            cout << left << setw(16) << encryptedNIK
-                 << setw(20) << encryptedNama
-                 << setw(12) << vote.pilihan
-                 << setw(25) << vote.getWaktuStr()
-                 << (vote.isValid ? "Valid" : "Invalid") << "\n";
-        }
-
-        // Tampilkan total record yang sebenarnya
-        cout << "\n" << string(80, '=') << "\n";
-        cout << "                       Total Record: " << encryptedVotes.size() << " voting\n";
-        cout << string(80, '=') << "\n\n";
-    } else {
-        cout << "Tidak dapat membuka file data voting (votes.dat atau keys.dat)\n";
-        cout << "Pastikan kedua file tersebut ada di direktori yang sama dengan program.\n";
-    }
-
-    setColor(7); // Reset warna ke default
-}
-// Fungsi untuk verifikasi data voting
-void verifikasiDataVoting() {
-    string username, password;
-    cout << "\nMasukkan username admin: ";
-    cin >> username;
-    cout << "Masukkan password admin: ";
-    cin >> password;
-    
-    if (!verifikasiAdmin(username, password)) {
-        cout << "\nAkses ditolak! Username atau password salah.\n";
+    if (allVotes.empty()) {
+        cout << "Belum ada data voting.\n";
         tungguInput();
         return;
     }
 
-    cout << "\n" << string(70, '=') << "\n";
-    cout << "                  VERIFIKASI DATA VOTING                  \n";
-    cout << string(70, '=') << "\n";
+    // Urutkan berdasarkan waktu terbaru
+    sort(allVotes.begin(), allVotes.end(), 
+         [](const VoteData& a, const VoteData& b) {
+             return a.waktu > b.waktu;
+         });
 
-    ifstream voteFile("votes.dat");
-    ifstream keyFile("keys.dat");
-    if (!voteFile.is_open() || !keyFile.is_open()) {
-        cout << "File data voting tidak ditemukan!\n";
+    const int ITEMS_PER_PAGE = 20;
+    int totalPages = (allVotes.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
+    int currentPage = 1;
+
+    while (true) {
+        cout << "\n" << string(60, '=') << "\n";
+        cout << "                DETAIL RECORD VOTING                \n";
+        cout << string(60, '=') << "\n\n";
+
+        // Tampilkan header tabel
+        cout << setw(5) << "No" << setw(20) << "NIK (Enkripsi)" << setw(25) << "Nama (Enkripsi)" 
+             << setw(10) << "Pilihan" << setw(20) << "Waktu" << "\n";
+        cout << string(80, '-') << "\n";
+
+        // Hitung indeks awal dan akhir untuk halaman saat ini
+        int startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        int endIdx = min(startIdx + ITEMS_PER_PAGE, static_cast<int>(allVotes.size()));
+
+        // Tampilkan data untuk halaman saat ini
+        for (int i = startIdx; i < endIdx; i++) {
+            const auto& vote = allVotes[i];
+            // Enkripsi NIK dan nama untuk keamanan
+            string encryptedNIK = encryptData(vote.nik, 3);
+            string encryptedName = encryptData(vote.namaVoter, 3);
+            
+            cout << setw(5) << (i + 1) << setw(20) << encryptedNIK << setw(25) << encryptedName 
+                 << setw(10) << vote.pilihan << setw(20) << vote.getWaktuStr() << "\n";
+        }
+
+        cout << string(80, '-') << "\n";
+        cout << "Halaman " << currentPage << " dari " << totalPages << "\n";
+        cout << "Total Record: " << allVotes.size() << "\n\n";
+        
+        cout << "Navigasi:\n";
+        cout << "1. Halaman Sebelumnya\n";
+        cout << "2. Halaman Berikutnya\n";
+        cout << "3. Pilih Halaman Spesifik\n";
+        cout << "4. Kembali ke Menu Utama\n\n";
+        cout << "Pilihan: ";
+
+        string choice;
+        cin >> choice;
+
+        if (choice == "1" && currentPage > 1) {
+            currentPage--;
+        }
+        else if (choice == "2" && currentPage < totalPages) {
+            currentPage++;
+        }
+        else if (choice == "3") {
+            cout << "Masukkan nomor halaman (1-" << totalPages << "): ";
+            int page;
+            if (cin >> page && page >= 1 && page <= totalPages) {
+                currentPage = page;
+            }
+            else {
+                cout << "Nomor halaman tidak valid!\n";
+                this_thread::sleep_for(chrono::seconds(1));
+            }
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+        else if (choice == "4") {
+            break;
+        }
+        else {
+            cout << "Pilihan tidak valid!\n";
+            this_thread::sleep_for(chrono::seconds(1));
+        }
+    }
+}
+// Fungsi untuk verifikasi data voting
+void verifikasiDataVoting() {
+    system("cls");
+    cout << "\n" << string(80, '=') << "\n";
+    cout << "                      VERIFIKASI DATA VOTING                    \n";
+    cout << string(80, '=') << "\n\n";
+
+    // Baca semua data voting
+    auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
+    
+    if (allVotes.empty()) {
+        cout << "Belum ada data voting untuk diverifikasi.\n";
+        tungguInput();
         return;
     }
 
+    // Urutkan berdasarkan waktu (dari yang terbaru)
+    sort(allVotes.begin(), allVotes.end(), 
+         [](const VoteData& a, const VoteData& b) {
+             return a.waktu > b.waktu;
+         });
+
+    const int ITEMS_PER_PAGE = 20;
+    int totalPages = (allVotes.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
+    int currentPage = 1;
+
+    while (true) {
+        system("cls");
+        cout << "\n" << string(80, '=') << "\n";
+        cout << "                      VERIFIKASI DATA VOTING                    \n";
+        cout << string(80, '=') << "\n\n";
+
+        // Tampilkan header tabel
+        setColor(11); // Cyan
+        cout << left << setw(20) << "NIK" 
+             << setw(30) << "Nama Pemilih" 
+             << setw(15) << "Pilihan" 
+             << setw(25) << "Waktu Voting" 
+             << "Status" << "\n";
+        cout << string(80, '-') << "\n";
+
+        // Hitung range data yang akan ditampilkan
+        int startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        int endIdx = min(startIdx + ITEMS_PER_PAGE, (int)allVotes.size());
+        
+        // Tampilkan data voting untuk halaman saat ini
+        for (int i = startIdx; i < endIdx; i++) {
+            const auto& vote = allVotes[i];
+            auto time = chrono::system_clock::to_time_t(vote.waktu);
+            auto ms = chrono::duration_cast<chrono::milliseconds>(
+                vote.waktu.time_since_epoch()) % 1000;
+            
+            stringstream ss;
+            ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
+            ss << '.' << setfill('0') << setw(3) << ms.count();
+            
+            if (vote.isValid) {
+                setColor(10); // Hijau untuk vote valid
+            } else {
+                setColor(12); // Merah untuk vote invalid
+            }
+            
+            cout << left << setw(20) << vote.nik
+                 << setw(30) << vote.namaVoter
+                 << setw(15) << vote.pilihan
+                 << setw(25) << ss.str()
+                 << (vote.isValid ? "Valid" : "Invalid") << "\n";
+        }
+
+        setColor(7); // Reset warna ke default
+        cout << "\n" << string(80, '=') << "\n";
+        cout << "                       Total Record: " << allVotes.size() << " voting\n";
+        cout << "                       Halaman " << currentPage << " dari " << totalPages << "\n";
+        cout << string(80, '=') << "\n\n";
+        
+        cout << "Navigasi:\n";
+        cout << "1. Halaman Sebelumnya\n";
+        cout << "2. Halaman Berikutnya\n";
+        cout << "3. Pilih Halaman Spesifik\n";
+        cout << "4. Detail Data Invalid\n";
+        cout << "5. Hapus Data Invalid\n";
+        cout << "6. Kembali ke Menu\n";
+        cout << "Pilihan: ";
+        
+        int choice;
+        cin >> choice;
+        
+        switch (choice) {
+            case 1:
+                if (currentPage > 1) currentPage--;
+                break;
+            case 2:
+                if (currentPage < totalPages) currentPage++;
+                break;
+            case 3: {
+                cout << "Masukkan nomor halaman (1-" << totalPages << "): ";
+                int targetPage;
+                cin >> targetPage;
+                if (targetPage >= 1 && targetPage <= totalPages) {
+                    currentPage = targetPage;
+    } else {
+                    cout << "\nNomor halaman tidak valid!\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                }
+                break;
+            }
+            case 4: {
+                system("cls");
+                cout << "\n" << string(80, '=') << "\n";
+                cout << "                      DETAIL DATA INVALID                    \n";
+                cout << string(80, '=') << "\n\n";
+                
+                bool foundInvalid = false;
+                for (const auto& vote : allVotes) {
+                    if (!vote.isValid) {
+                        foundInvalid = true;
+                        cout << "NIK: " << vote.nik << "\n";
+                        cout << "Nama: " << vote.namaVoter << "\n";
+                        cout << "Pilihan: " << vote.pilihan << "\n";
+                        cout << "Waktu: " << vote.getWaktuStr() << "\n";
+                        
+                        // Analisis alasan ketidakvalidan
+                        cout << "Alasan Invalid:\n";
+                        if (vote.nik.length() != 16) {
+                            cout << "- NIK tidak 16 digit\n";
+                        }
+                        if (!all_of(vote.nik.begin(), vote.nik.end(), ::isdigit)) {
+                            cout << "- NIK mengandung karakter non-digit\n";
+                        }
+                        if (vote.namaVoter.empty()) {
+                            cout << "- Nama pemilih kosong\n";
+                        }
+                        if (vote.pilihan <= 0) {
+                            cout << "- Pilihan tidak valid\n";
+                        }
+                        cout << string(80, '-') << "\n";
+                    }
+                }
+                
+                if (!foundInvalid) {
+                    cout << "Tidak ada data invalid yang ditemukan.\n";
+                }
+                
+        tungguInput();
+                break;
+            }
+            case 5: {
+                cout << "\nApakah Anda yakin ingin menghapus semua data invalid? (y/n): ";
+                char confirm;
+                cin >> confirm;
+                
+                if (confirm == 'y' || confirm == 'Y') {
+                    // Buat file temporary untuk menyimpan data valid
+                    ofstream tempFile("temp_votes.dat");
+                    ofstream tempKeys("temp_keys.dat");
+    ifstream voteFile("votes.dat");
+    ifstream keyFile("keys.dat");
+                    
+                    if (tempFile.is_open() && tempKeys.is_open() && 
+                        voteFile.is_open() && keyFile.is_open()) {
+
     string encryptedData;
     int key;
-    int counter = 1;
-    bool adaMasalah = false;
-    map<string, int> nikCount;  // Untuk menghitung duplikasi NIK
-    map<int, int> pilihanCount; // Untuk menghitung distribusi pilihan
+                        int validCount = 0;
 
-    cout << "Memverifikasi data voting...\n\n";
     while (getline(voteFile, encryptedData) && keyFile >> key) {
         try {
             string decryptedData = decryptData(encryptedData, key);
             VoteData vote = VoteData::fromString(decryptedData);
             
-            // Verifikasi format data
-            if (vote.namaVoter.empty() || vote.nik.empty() || 
-                vote.pilihan <= 0 || !vote.isValid ||
-                vote.waktu.time_since_epoch().count() == 0) {
-                cout << "⚠️  Vote #" << counter << " terdeteksi tidak valid!\n";
-                cout << "   Data: " << decryptedData << "\n";
-                cout << "   Key: " << key << "\n";
-                adaMasalah = true;
+                                if (vote.isValid) {
+                                    // Simpan data valid ke file temporary
+                                    tempFile << encryptedData << "\n";
+                                    tempKeys << key << "\n";
+                                    validCount++;
+                                }
+                            } catch (const exception& e) {
+                                logError("Error processing vote data: " + string(e.what()));
+                            }
+                        }
+                        
+                        // Tutup semua file
+                        tempFile.close();
+                        tempKeys.close();
+                        voteFile.close();
+                        keyFile.close();
+                        
+                        // Ganti file asli dengan file temporary
+                        remove("votes.dat");
+                        remove("keys.dat");
+                        rename("temp_votes.dat", "votes.dat");
+                        rename("temp_keys.dat", "keys.dat");
+                        
+                        cout << "\nBerhasil menghapus " << (allVotes.size() - validCount) 
+                             << " data invalid.\n";
+                        cout << "Sisa " << validCount << " data valid.\n";
+                        
+                        // Refresh data
+                        allVotes.clear();
+                        tie(votesPerCandidate, allVotes) = bacaSemuaVotes();
+                        totalPages = (allVotes.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
+                        if (currentPage > totalPages) currentPage = totalPages;
+                    }
+                }
+                tungguInput();
+                break;
             }
-
-            // Hitung distribusi NIK dan pilihan
-            nikCount[vote.nik]++;
-            pilihanCount[vote.pilihan]++;
-            counter++;
-        }
-        catch (const exception& e) {
-            string errorMsg = "Error pada vote #" + to_string(counter) + ": " + string(e.what());
-            logError(errorMsg);
-            cout << "  Error pada vote #" << counter << "!\n";
-            cout << "   Error: " << e.what() << "\n";
-            cout << "   Key: " << key << "\n";
-            adaMasalah = true;
-            counter++;
+            case 6:
+                return;
+            default:
+                cout << "\nPilihan tidak valid!\n";
+                this_thread::sleep_for(chrono::seconds(1));
         }
     }
-
-    // Tampilkan statistik verifikasi
-    cout << "\nSTATISTIK VERIFIKASI:\n";
-    cout << string(70, '-') << "\n";
-    
-    // Hitung NIK yang muncul lebih dari sekali
-    int duplicateNIK = count_if(nikCount.begin(), nikCount.end(),
-                               [](const auto& pair) { return pair.second > 1; });
-    
-    cout << "Total Vote Terverifikasi: " << (counter - 1) << "\n";
-    cout << "Jumlah NIK Unik: " << nikCount.size() << "\n";
-    cout << "Jumlah NIK Duplikat: " << duplicateNIK << "\n";
-    
-    cout << "\nDISTRIBUSI PILIHAN:\n";
-    for (const auto& pair : pilihanCount) {
-        cout << "Kandidat " << pair.first << ": " << pair.second << " vote\n";
-    }
-
-    if (!adaMasalah) {
-        cout << "\n✓ Semua data voting terverifikasi valid!\n";
-    }
-
-    voteFile.close();
-    keyFile.close();
-    cout << string(70, '=') << "\n";
-    tungguInput();  // Add this line to wait for user input
 }
 
 // Fungsi untuk audit trail
@@ -1399,78 +1527,74 @@ void tampilkanStatistikVoting() {
 }
 
 void tampilkanRantaiVoting() {
-    auto [hasilVote, semuaVote] = bacaSemuaVotes();
-    if (semuaVote.empty()) {
-        cout << "\n" << string(50, '*') << "\n";
-        cout << "Belum ada data voting yang tersimpan!\n";
-        cout << string(50, '*') << "\n";
+    system("cls");
+    cout << "\n" << string(80, '=') << "\n";
+    cout << "                      ANALISIS RANTAI VOTING                    \n";
+    cout << string(80, '=') << "\n\n";
+
+    // Baca semua data voting
+    auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
+    
+    if (allVotes.empty()) {
+        cout << "Belum ada data voting untuk dianalisis.\n";
+        tungguInput();
         return;
     }
 
-    cout << "\n" << string(70, '=') << "\n";
-    cout << "                  ANALISIS RANTAI VOTING                  \n";
-    cout << string(70, '=') << "\n\n";
+    // Buat graph rantai voting
+    VoteChainGraph graph;
+    for (const auto& vote : allVotes) {
+        graph.addVote(vote);
+    }
 
-    // Buat graph untuk analisis rantai voting
-    VoteChainGraph voteChain;
+    // Dapatkan statistik rantai voting
+    auto stats = graph.getVotingStats();
     
-    // Filter vote sah dan urutkan berdasarkan waktu
-    vector<VoteData> voteSah;
-    copy_if(semuaVote.begin(), semuaVote.end(), back_inserter(voteSah),
-            [](const VoteData& vote) { return vote.isValid; });
-    sort(voteSah.begin(), voteSah.end(),
-         [](const VoteData& a, const VoteData& b) {
-             return a.waktu < b.waktu;
+    // Tampilkan statistik rantai
+    setColor(11); // Cyan
+    cout << " STATISTIK RANTAI VOTING\n";
+    cout << string(80, '-') << "\n";
+    cout << "Total Rantai    : " << stats.totalVotes << " rantai\n";
+    cout << "Rantai Terpanjang: " << stats.maxChainLength << " voting\n";
+    cout << "Rantai Terpendek : " << stats.minChainLength << " voting\n";
+    cout << "Rata-rata Rantai : " << fixed << setprecision(2) 
+         << stats.avgChainLength << " voting\n\n";
+
+    // Tampilkan distribusi rantai
+    setColor(10); // Hijau
+    cout << " DISTRIBUSI RANTAI VOTING\n";
+    cout << string(80, '-') << "\n";
+    
+    // Dapatkan semua rantai voting
+    auto chains = graph.analyzeVotingChain();
+    
+    // Urutkan rantai berdasarkan panjang (dari terpanjang)
+    sort(chains.begin(), chains.end(),
+         [](const vector<VoteData>& a, const vector<VoteData>& b) {
+             return a.size() > b.size();
          });
 
-    // Tambahkan vote sah ke graph
-    for (const auto& vote : voteSah) {
-        if (isValidNIK(vote.nik) && vote.waktu.time_since_epoch().count()>0) {
-            voteChain.addVote(vote.waktu, vote.nik, vote.pilihan);
+    // Tampilkan detail rantai
+    for (size_t i = 0; i < chains.size(); i++) {
+        const auto& chain = chains[i];
+        cout << "\nRantai #" << (i + 1) << " (" << chain.size() << " voting):\n";
+        cout << string(80, '-') << "\n";
+        
+        for (const auto& vote : chain) {
+            cout << "NIK: " << vote.nik << "\n";
+            cout << "Nama: " << vote.namaVoter << "\n";
+            cout << "Pilihan: " << vote.pilihan << "\n";
+            cout << "Waktu: " << vote.getWaktuStr() << "\n";
+            cout << string(40, '-') << "\n";
         }
     }
 
-    if (!voteSah.empty()) {
-        // Analisis menggunakan BFS dan DFS
-        auto startTime = voteSah[0].waktu;
-        vector<VoteNode*> bfsChain = voteChain.BFS(startTime);
-        vector<VoteNode*> dfsChain = voteChain.DFS(startTime);
+    cout << "\n" << string(80, '=') << "\n";
+    cout << "Total Rantai: " << chains.size() << " rantai voting\n";
+    cout << string(80, '=') << "\n";
 
-        cout << "RANTAI VOTING UTAMA:\n";
-        cout << string(70, '-') << "\n";
-        cout << "Dimulai dari: " << voteSah[0].getWaktuStr() << "\n";
-        cout << "Total vote dalam rantai: " << voteSah.size() << "\n\n";
-
-        cout << "ANALISIS BFS (Breadth-First Search):\n";
-        cout << "Jumlah vote dalam rantai BFS: " << bfsChain.size() << "\n";
-        cout << "Urutan BFS (5 vote pertama):\n";
-        for (size_t i = 0; i < min(bfsChain.size(), size_t(5)); i++) {
-            cout << "  " << (i + 1) << ". " << bfsChain[i]->getWaktuStr() 
-                 << " - " << encryptData(bfsChain[i]->nik, 7) 
-                 << " (Kandidat " << bfsChain[i]->pilihan << ")\n";
-        }
-        cout << "\n";
-
-        cout << "ANALISIS DFS (Depth-First Search):\n";
-        cout << "Jumlah vote dalam rantai DFS: " << dfsChain.size() << "\n";
-        cout << "Urutan DFS (5 vote pertama):\n";
-        for (size_t i = 0; i < min(dfsChain.size(), size_t(5)); i++) {
-            cout << "  " << (i + 1) << ". " << dfsChain[i]->getWaktuStr() 
-                 << " - " << encryptData(dfsChain[i]->nik, 7) 
-                 << " (Kandidat " << dfsChain[i]->pilihan << ")\n";
-        }
-        cout << string(70, '-') << "\n";
-
-        // Tampilkan rantai voting lengkap
-        cout << "\nRANTAI VOTING LENGKAP (BFS):\n";
-        for (size_t i = 0; i < bfsChain.size(); i++) {
-            cout << (i + 1) << ". Waktu: " << bfsChain[i]->getWaktuStr() << "\n";
-            cout << "   Voter: " << encryptData(bfsChain[i]->nik, 7) << "\n";
-            cout << "   Pilihan: " << bfsChain[i]->pilihan << "\n";
-            if (i < bfsChain.size() - 1) cout << "   ↓\n";
-        }
-    }
-    cout << string(70, '=') << "\n";
+    setColor(7); // Reset warna ke default
+    tungguInput();
 }
 
 void tampilkanDistribusiVote(const vector<Kandidat>& kandidat) {
@@ -1539,29 +1663,6 @@ void tampilkanDistribusiVote(const vector<Kandidat>& kandidat) {
     cout << string(70, '=') << "\n";
 }
 
-// Modifikasi fungsi kelolaAdmin untuk menghapus opsi ganti password
-void kelolaAdmin() {
-    string username, password;
-    cout << "\nMasukkan username admin: ";
-    cin >> username;
-    cout << "Masukkan password admin: ";
-    cin >> password;
-    
-    if (!verifikasiAdmin(username, password)) {
-        cout << "\nAkses ditolak! Username atau password salah.\n";
-        tungguInput();
-        return;
-    }
-
-    cout << "\n" << string(50, '=') << "\n";
-    cout << "                  KELOLA ADMIN                  \n";
-    cout << string(50, '=') << "\n";
-    cout << "Fitur menambahkan admin baru telah dinonaktifkan.\n";
-    cout << "Hanya admin default yang dapat digunakan.\n";
-    cout << string(50, '=') << "\n";
-    tungguInput();
-}
-
 void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
     system("cls");
     #ifdef _WIN32
@@ -1619,10 +1720,9 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
              return votesPerCandidate[a.nomor] > votesPerCandidate[b.nomor];
          });
 
-    int totalVotes = allVotes.size();
     for (const auto& k : sortedKandidat) {
         int votes = votesPerCandidate[k.nomor];
-        double percentage = totalVotes > 0 ? (votes * 100.0 / totalVotes) : 0;
+        double percentage = totalAll > 0 ? (votes * 100.0 / totalAll) : 0;
         int barLength = static_cast<int>(percentage * 0.5); // 50 karakter untuk 100%
         
         cout << left << setw(3) << k.nomor << ". "
@@ -1667,80 +1767,13 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
         cout << " " << votes << " suara\n";
     }
     cout << "\n";
-
-    // Tampilkan analisis rantai voting
-    setColor(11); // Cyan
-    cout << " ANALISIS RANTAI VOTING\n";
-    cout << string(80, '-') << "\n";
-    
-    VoteChainGraph graph;
-    for (const auto& vote : allVotes) {
-        graph.addVote(vote);
-    }
-    
-    auto stats = graph.getVotingStats();
-    cout << "Total Rantai    : " << stats.totalVotes << " rantai\n";
-    cout << "Rantai Terpanjang: " << stats.maxChainLength << " voting\n";
-    cout << "Rantai Terpendek : " << stats.minChainLength << " voting\n";
-    cout << "Rata-rata Rantai : " << fixed << setprecision(2) 
-         << stats.avgChainLength << " voting\n\n";
-
-    // Langsung tampilkan detail voting
-    cout << "\n" << string(80, '=') << "\n";
-    cout << "                               DETAIL RECORD VOTING                    \n";
-    cout << string(80, '=') << "\n\n";
-
-    // Urutkan berdasarkan waktu (dari yang terbaru)
-    sort(allVotes.begin(), allVotes.end(), 
-         [](const VoteData& a, const VoteData& b) {
-             return a.waktu > b.waktu;
-         });
-
-    // Tampilkan header tabel
-    setColor(11); // Cyan
-    cout << left << setw(20) << "NIK" 
-         << setw(30) << "Nama Pemilih" 
-         << setw(15) << "Pilihan" 
-         << setw(25) << "Waktu Voting" 
-         << "Status" << "\n";
-    cout << string(80, '-') << "\n";
-    
-    // Tampilkan data voting
-    for (const auto& vote : allVotes) {
-        // Konversi waktu ke format yang lebih detail
-        auto time = chrono::system_clock::to_time_t(vote.waktu);
-        auto ms = chrono::duration_cast<chrono::milliseconds>(
-            vote.waktu.time_since_epoch()) % 1000;
-        
-        stringstream ss;
-        ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
-        ss << '.' << setfill('0') << setw(3) << ms.count();
-        
-        // Tampilkan data dengan warna berbeda untuk status valid/invalid
-        if (vote.isValid) {
-            setColor(10); // Hijau untuk vote valid
-        } else {
-            setColor(12); // Merah untuk vote invalid
-        }
-        
-        cout << left << setw(20) << vote.nik
-             << setw(30) << vote.namaVoter
-             << setw(15) << vote.pilihan
-             << setw(25) << ss.str()
-             << (vote.isValid ? "Valid" : "Invalid") << "\n";
-    }
-    
-    setColor(7); // Reset warna ke default
-    cout << "\n" << string(80, '=') << "\n";
-    cout << "                       Total Record: " << allVotes.size() << " voting\n";
-    cout << string(80, '=') << "\n\n";
-
+    setColor(7);
     tungguInput();
 }
 
 void tampilkanDetailVoting() {
     system("cls");
-    setupConsole(); // Tambahkan ini untuk memastikan encoding UTF-8
+    setupConsole();
     
     cout << "\n" << string(80, '=') << "\n";
     cout << "                               DETAIL RECORD VOTING                    \n";
@@ -1748,12 +1781,22 @@ void tampilkanDetailVoting() {
 
     // Baca semua data voting
     auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
-    
+
     // Urutkan berdasarkan waktu (dari yang terbaru)
     sort(allVotes.begin(), allVotes.end(), 
          [](const VoteData& a, const VoteData& b) {
              return a.waktu > b.waktu;
          });
+
+    const int ITEMS_PER_PAGE = 20;  // Jumlah item per halaman
+    int totalPages = (allVotes.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
+    int currentPage = 1;
+
+    while (true) {
+        system("cls");
+        cout << "\n" << string(80, '=') << "\n";
+        cout << "                               DETAIL RECORD VOTING                    \n";
+        cout << string(80, '=') << "\n\n";
 
     // Tampilkan header tabel
     setColor(11); // Cyan
@@ -1764,9 +1807,13 @@ void tampilkanDetailVoting() {
          << "Status" << "\n";
     cout << string(80, '-') << "\n";
     
-    // Tampilkan data voting
-    for (const auto& vote : allVotes) {
-        // Konversi waktu ke format yang lebih detail
+        // Hitung range data yang akan ditampilkan
+        int startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        int endIdx = min(startIdx + ITEMS_PER_PAGE, (int)allVotes.size());
+        
+        // Tampilkan data voting untuk halaman saat ini
+        for (int i = startIdx; i < endIdx; i++) {
+            const auto& vote = allVotes[i];
         auto time = chrono::system_clock::to_time_t(vote.waktu);
         auto ms = chrono::duration_cast<chrono::milliseconds>(
             vote.waktu.time_since_epoch()) % 1000;
@@ -1775,7 +1822,6 @@ void tampilkanDetailVoting() {
         ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
         ss << '.' << setfill('0') << setw(3) << ms.count();
         
-        // Tampilkan data dengan warna berbeda untuk status valid/invalid
         if (vote.isValid) {
             setColor(10); // Hijau untuk vote valid
         } else {
@@ -1792,7 +1838,45 @@ void tampilkanDetailVoting() {
     setColor(7); // Reset warna ke default
     cout << "\n" << string(80, '=') << "\n";
     cout << "                       Total Record: " << allVotes.size() << " voting\n";
-    cout << string(80, '=') << "\n";
+        cout << "                       Halaman " << currentPage << " dari " << totalPages << "\n";
+    cout << string(80, '=') << "\n\n";
+
+        cout << "Navigasi:\n";
+        cout << "1. Halaman Sebelumnya\n";
+        cout << "2. Halaman Berikutnya\n";
+        cout << "3. Pilih Halaman Spesifik\n";
+        cout << "4. Kembali ke Menu\n";
+        cout << "Pilihan: ";
+        
+        int choice;
+        cin >> choice;
+        
+        switch (choice) {
+            case 1:
+                if (currentPage > 1) currentPage--;
+                break;
+            case 2:
+                if (currentPage < totalPages) currentPage++;
+                break;
+            case 3: {
+                cout << "Masukkan nomor halaman (1-" << totalPages << "): ";
+                int targetPage;
+                cin >> targetPage;
+                if (targetPage >= 1 && targetPage <= totalPages) {
+                    currentPage = targetPage;
+        } else {
+                    cout << "\nNomor halaman tidak valid!\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                }
+                break;
+            }
+            case 4:
+                return;
+            default:
+                cout << "\nPilihan tidak valid!\n";
+                this_thread::sleep_for(chrono::seconds(1));
+        }
+    }
 }
 
 void setColor(int color) {
@@ -1921,7 +2005,7 @@ void tampilkanMenu() {
     cout << "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢑⡿⡯⣞⣿⣿⣾⡆⠈⣏⢯⣿⣿⣷⣟⣿⡿⣿⢿⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" << endl;
     cout << "   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡼⣜⣱⣣⢣⢫⢋⡽⡹⢹⠉⡏⣏⠹⣱⡱⣼⣌⡪⢇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" << endl;
     cout << "   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠑⠛⠛⠛⠓⣿⣳⠵⠋⠓⢼⣟⡟⠓⠛⠓⠓⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" << endl;
-    cout << "                      SISTEM VOTING PEMILU PRESIDEN 2029        \n";
+    cout << "        SISTEM VOTING PEMILU PRESIDEN 2029        \n";
     cout << string(60, '=') << "\n";
     cout << "│                                                          │\n";
     cout << "│                  1. Lihat Daftar Kandidat                │\n";
