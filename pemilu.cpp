@@ -28,6 +28,10 @@ class AdminHashTable;
 class AVLTree;
 class VoterHashTable;
 
+// Forward declarations for utility functions
+string decryptData(const string& data, int key);
+void logError(const string& msg);
+
 // Global variables
 extern AdminHashTable adminTable;
 extern AVLTree kandidatTree;
@@ -164,7 +168,7 @@ private:
     vector<VoteNode*> voteNodes;
     const chrono::minutes MAX_CHAIN_TIME = chrono::minutes(5);
 
-    // Helper function untuk DFS
+    // Unified DFS utility function
     void DFSUtil(VoteNode* node, unordered_set<VoteNode*>& visited, vector<VoteNode*>& result) {
         visited.insert(node);
         result.push_back(node);
@@ -172,6 +176,19 @@ private:
         for (VoteNode* next : node->nextVotes) {
             if (visited.find(next) == visited.end()) {
                 DFSUtil(next, visited, result);
+            }
+        }
+    }
+
+    // Helper for VoteData pattern collection
+    void DFSUtilForPattern(VoteNode* node, vector<VoteNode*>& visited, vector<VoteData>& pattern) {
+        node->visited = true;
+        visited.push_back(node);
+        pattern.push_back(node->toVoteData());
+        
+        for (VoteNode* neighbor : node->nextVotes) {
+            if (!neighbor->visited) {
+                DFSUtilForPattern(neighbor, visited, pattern);
             }
         }
     }
@@ -229,7 +246,7 @@ public:
         return result;
     }
 
-    // Tambahkan method DFS
+    // Unified DFS method
     vector<VoteNode*> DFS(const chrono::system_clock::time_point& startTime) {
         vector<VoteNode*> result;
         if (voteMap.find(startTime) == voteMap.end()) return result;
@@ -252,11 +269,12 @@ public:
     VotingStats getVotingStats() {
         VotingStats stats = {0, 0, INT_MAX, 0.0, {}};
         unordered_set<VoteNode*> visited;
+        int chainCount = 0;  // Menghitung jumlah rantai
         
         for (const auto& pair : voteMap) {
             if (visited.find(pair.second) == visited.end()) {
                 vector<VoteNode*> chain = DFS(pair.first);
-                stats.totalVotes += chain.size();
+                chainCount++;  // Increment jumlah rantai
                 stats.maxChainLength = max(stats.maxChainLength, (int)chain.size());
                 stats.minChainLength = min(stats.minChainLength, (int)chain.size());
                 
@@ -267,8 +285,11 @@ public:
             }
         }
         
+        // Total votes adalah jumlah node unik dalam graph
+        stats.totalVotes = voteMap.size();
+        
         if (stats.totalVotes > 0) {
-            stats.avgChainLength = (double)stats.totalVotes / voteMap.size();
+            stats.avgChainLength = (double)stats.totalVotes / chainCount;
         }
         if (stats.minChainLength == INT_MAX) stats.minChainLength = 0;
         
@@ -327,7 +348,7 @@ public:
         return chains;
     }
 
-    vector<vector<VoteData>> DFS() {
+    vector<vector<VoteData>> getVotingPatterns() {
         vector<vector<VoteData>> patterns;
         vector<VoteNode*> visited;
         
@@ -340,7 +361,7 @@ public:
         for (auto& [time, node] : voteMap) {
             if (!node->visited) {
                 vector<VoteData> currentPattern;
-                DFSUtil(node, visited, currentPattern);
+                DFSUtilForPattern(node, visited, currentPattern);
                 if (!currentPattern.empty()) {
                     patterns.push_back(currentPattern);
                 }
@@ -348,21 +369,6 @@ public:
         }
         
         return patterns;
-    }
-
-private:
-    void DFSUtil(VoteNode* node, vector<VoteNode*>& visited, 
-                 vector<VoteData>& pattern) {
-        node->visited = true;
-        visited.push_back(node);
-        // Gunakan toVoteData untuk konversi
-        pattern.push_back(node->toVoteData());
-        
-        for (VoteNode* neighbor : node->nextVotes) {
-            if (!neighbor->visited) {
-                DFSUtil(neighbor, visited, pattern);
-            }
-        }
     }
 };
 
@@ -460,6 +466,19 @@ private:
         }
     }
 
+    // Search for candidate by nomor
+    BSTNode* searchByNomor(BSTNode* node, int nomor) {
+        if (!node || node->data.nomor == nomor) {
+            return node;
+        }
+        
+        if (nomor < node->data.nomor) {
+            return searchByNomor(node->left, nomor);
+        }
+        
+        return searchByNomor(node->right, nomor);
+    }
+
 public:
     AVLTree() : root(nullptr) {}
 
@@ -472,105 +491,94 @@ public:
         inorderTraversal(root, result);
         return result;
     }
+
+    // Public search method
+    Kandidat* searchByNomor(int nomor) {
+        BSTNode* node = searchByNomor(root, nomor);
+        return node ? &(node->data) : nullptr;
+    }
+};
+
+// Enum for vote status
+enum class VoteStatus {
+    NotFound,
+    NotVoted,
+    AlreadyVoted
 };
 
 // Modifikasi Hash Table untuk validasi NIK
 class VoterHashTable {
 private:
-    static const int TABLE_SIZE = 10007;
-    vector<list<pair<string, bool>>> table;  // Menggunakan NIK sebagai key
-
-    size_t hashFunction(const string& nik) {
-        size_t hash = 0;
-        for (char c : nik) {
-            hash = (hash * 31 + c) % TABLE_SIZE;
-        }
-        return hash;
-    }
+    unordered_map<string, bool> voters;  // NIK -> hasVoted
 
 public:
-    VoterHashTable() : table(TABLE_SIZE) {
-        // Load existing voters from file
-        ifstream file("voters.dat");
-        if (file.is_open()) {
-            string nik;
-            while (file >> nik) {
-                size_t index = hashFunction(nik);
-                table[index].push_back({nik, true});
+    VoterHashTable() {
+        // Load voting data from votes.dat and keys.dat
+        ifstream voteFile("votes.dat");
+        ifstream keyFile("keys.dat");
+        if (voteFile.is_open() && keyFile.is_open()) {
+            string encryptedData;
+            int key;
+            while (getline(voteFile, encryptedData) && keyFile >> key) {
+                try {
+                    string decryptedData = decryptData(encryptedData, key);
+                    VoteData vote = VoteData::fromString(decryptedData);
+                    if (vote.isValid) {
+                        voters[vote.nik] = true;  // Mark as voted
+                    }
+                } catch (const exception& e) {
+                    logError("Error loading vote data: " + string(e.what()));
+                }
             }
-            file.close();
+            voteFile.close();
+            keyFile.close();
         }
     }
 
     ~VoterHashTable() {
-        // Save voters to file
-        ofstream file("voters.dat");
-        if (file.is_open()) {
-            for (const auto& bucket : table) {
-                for (const auto& pair : bucket) {
-                    if (pair.second) {  // Only save voted NIKs
-                        file << pair.first << "\n";
-                    }
-                }
-            }
-            file.close();
-        }
+        // No need to save to separate files anymore
     }
 
-    void insert(const string& nik) {
-        size_t index = hashFunction(nik);
-        // Check if NIK already exists
-        for (const auto& pair : table[index]) {
-            if (pair.first == nik) {
-                cout << "\n" << string(50,'*') << "\n";
-                cout << "NIK " << nik << " sudah ada dalam hash table!\n";
-                cout << string(50,'*') << "\n";
-                return;
-            }
+    VoteStatus hasVoted(const string& nik) {
+        auto it = voters.find(nik);
+        if (it == voters.end()) {
+            // NIK not found, auto-register
+            voters[nik] = false;
+            cout << "\n" << string(50, '-') << "\n";
+            cout << "NIK " << nik << " berhasil didaftarkan secara otomatis.\n";
+            cout << string(50, '-') << "\n";
+            return VoteStatus::NotVoted;
         }
-        table[index].push_back({nik, false});  // Initially not voted
-        cout << "\n" << string(50, '-') << "\n";
-        cout << "NIK " << nik << " berhasil ditambahkan ke hash table.\n";
-        cout << string(50, '-') << "\n";
-    }
-
-    bool hasVoted(const string& nik) {
-        size_t index = hashFunction(nik);
-        for (const auto& pair : table[index]) {
-            if (pair.first == nik) {
-                cout << "\n" << string(50,'*') << "\n";
-                cout << "NIK " << nik << " ditemukan dalam hash table.\n";
-                cout << "Status voting: " << (pair.second ? "Sudah voting" : "Belum voting") << "\n";
-                cout << string(50,'*') << "\n";
-                return pair.second;
-            }
+        
+        if (it->second) {
+            cout << "\n" << string(50,'*') << "\n";
+            cout << "ERROR: NIK " << nik << " sudah melakukan voting!\n";
+            cout << string(50,'*') << "\n";
+            return VoteStatus::AlreadyVoted;
         }
-        cout << "\n" << string(50, '-') << "\n";
-        cout << "NIK " << nik << " tidak ditemukan dalam hash table.\n";
-        cout << string(50, '-') << "\n";
-        return false;
+        
+        return VoteStatus::NotVoted;
     }
 
     void markAsVoted(const string& nik) {
-        size_t index = hashFunction(nik);
-        for (auto& pair : table[index]) {
-            if (pair.first == nik) {
-                if (pair.second) {
-                    cout << "\n" << string(50,'*') << "\n";
-                    cout << "NIK " << nik << " sudah ditandai sebagai sudah voting!\n";
-                    cout << string(50,'*') << "\n";
-                } else {
-                    pair.second = true;
-                    cout << "\n" << string(50, '-') << "\n";
-                    cout << "NIK " << nik << " berhasil ditandai sebagai sudah voting.\n";
-                    cout << string(50, '-') << "\n";
-                }
-                return;
-            }
+        auto it = voters.find(nik);
+        if (it == voters.end()) {
+            cout << "\n" << string(50,'*') << "\n";
+            cout << "NIK " << nik << " tidak ditemukan untuk ditandai sebagai sudah voting!\n";
+            cout << string(50,'*') << "\n";
+            return;
         }
-        cout << "\n" << string(50,'*') << "\n";
-        cout << "NIK " << nik << " tidak ditemukan untuk ditandai sebagai sudah voting!\n";
-        cout << string(50,'*') << "\n";
+        
+        if (it->second) {
+            cout << "\n" << string(50,'*') << "\n";
+            cout << "NIK " << nik << " sudah ditandai sebagai sudah voting!\n";
+            cout << string(50,'*') << "\n";
+        } else {
+            it->second = true;
+            cout << "\n" << string(50, '-') << "\n";
+            cout << "NIK " << nik << " berhasil ditandai sebagai sudah voting.\n";
+            cout << string(50, '-') << "\n";
+        }
     }
 };
 
@@ -647,7 +655,6 @@ AdminHashTable adminTable;
 void tungguInput();
 bool verifikasiAdmin(const string& username, const string& password);
 void menuAdmin(vector<Kandidat>& kandidat);
-void tampilkanMenuAdmin();
 void verifikasiDataVoting();
 void auditTrailVoting();
 void kelolaAdmin();
@@ -657,10 +664,12 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat);
 void tampilkanDetailVoting();
 void setColor(int color);
 void tampilkanMenu();
+bool isValidNIK(const string& nik);
+bool safeWriteToFile(const string& filename, const string& content);
 
 // Implementasi fungsi-fungsi
 void tungguInput() {
-    cout << "\nTekan Enter untuk kembali ke menu utama...";
+    cout << "\nTekan Enter untuk kembali...";
     cin.clear();  // Clear any error flags
     cin.sync();   // Clear input buffer
     cin.ignore(numeric_limits<streamsize>::max(), '\n');  // Clear any remaining input
@@ -687,6 +696,7 @@ void tampilkanMenuAdmin() {
 
 void menuAdmin(vector<Kandidat>& kandidat) {
     string username, password;
+    system("cls");
     cout << "\nMasukkan username admin: ";
     cin >> username;
     cout << "Masukkan password admin: ";
@@ -761,8 +771,8 @@ void menuAdmin(vector<Kandidat>& kandidat) {
                 cout << "\n" << string(50, '*') << "\n";
                 cout << "ERROR: Pilihan tidak valid!\n";
                 cout << string(50, '*') << "\n";
+                tungguInput();
         }
-        if (pilihan != 3) tungguInput();
     } while (pilihan != 3);
 }
 
@@ -824,6 +834,8 @@ vector<Kandidat> bacaKandidat() {
         file.close();
     }
     catch (const exception& e) {
+        string errorMsg = "Error membaca kandidat: " + string(e.what());
+        logError(errorMsg);
         cout << "Error: " << e.what() << endl;
         // Jika file tidak ada, buat kandidat default
         kandidat = {
@@ -856,16 +868,13 @@ void simpanVote(const string& namaVoter, const string& nik, int pilihan,
         string data = vote.toString();
         string encryptedData = encryptData(data, key);
         
-        // Simpan ke file dengan kunci terpisah
-        ofstream voteFile("votes.dat", ios::app);
-        ofstream keyFile("keys.dat", ios::app);
-        if (!voteFile.is_open() || !keyFile.is_open()) {
-            throw runtime_error("Tidak dapat membuka file untuk menyimpan vote!");
+        // Simpan ke file dengan safe writing
+        if (!safeWriteToFile("votes.dat", encryptedData + "\n")) {
+            throw runtime_error("Tidak dapat menyimpan data vote!");
         }
-        voteFile << encryptedData << "\n";
-        keyFile << key << "\n";
-        voteFile.close();
-        keyFile.close();
+        if (!safeWriteToFile("keys.dat", to_string(key) + "\n")) {
+            throw runtime_error("Tidak dapat menyimpan kunci enkripsi!");
+        }
         
         cout << "\n" << string(50, '=') << "\n";
         cout << "               VOTE BERHASIL DISIMPAN" << "\n";
@@ -877,7 +886,9 @@ void simpanVote(const string& namaVoter, const string& nik, int pilihan,
         cout << string(50, '=') << "\n";
     }
     catch (const exception& e) {
-        cout << "Error saat menyimpan vote: " << e.what() << endl;
+        string errorMsg = "Error saat menyimpan vote: " + string(e.what());
+        logError(errorMsg);
+        cout << errorMsg << endl;
     }
 }
 // Modifikasi fungsi bacaSemuaVotes untuk memfilter voting yang sah
@@ -906,53 +917,7 @@ pair<map<int, int>, vector<VoteData>> bacaSemuaVotes() {
     return {hasilVote, semuaVote};
 }
 // Algoritma sorting alternatif
-void quickSort(vector<Kandidat>& arr, int low, int high) {
-    if (low < high) {
-        // Partition
-        auto pivot = arr[high];
-        int i = low - 1;
-        
-        for (int j = low; j < high; j++) {
-            if (arr[j].nomor < pivot.nomor) {
-                i++;
-                swap(arr[i], arr[j]);
-            }
-        }
-        swap(arr[i + 1], arr[high]);
-        int pi = i + 1;
-        
-        // Rekursif
-        quickSort(arr, low, pi - 1);
-        quickSort(arr, pi + 1, high);
-    }
-}
-
-void mergeSort(vector<Kandidat>& arr, int left, int right) {
-    if (left < right) {
-        int mid = left + (right - left) / 2;
-        mergeSort(arr, left, mid);
-        mergeSort(arr, mid + 1, right);
-        
-        // Merge
-        vector<Kandidat> temp(right - left + 1);
-        int i = left, j = mid + 1, k = 0;
-        
-        while (i <= mid && j <= right) {
-            if (arr[i].nomor <= arr[j].nomor) {
-                temp[k++] = arr[i++];
-            } else {
-                temp[k++] = arr[j++];
-            }
-        }
-        
-        while (i <= mid) temp[k++] = arr[i++];
-        while (j <= right) temp[k++] = arr[j++];
-        
-        for (i = 0; i < k; i++) {
-            arr[left + i] = temp[i];
-        }
-    }
-}
+// Removed quickSort and mergeSort functions - using std::sort with lambda instead
 
 // Modifikasi fungsi tampilkanKandidat untuk mendukung semua metode sorting
 void tampilkanKandidat(vector<Kandidat>& kandidat, int sortMethod = 0) {
@@ -960,24 +925,12 @@ void tampilkanKandidat(vector<Kandidat>& kandidat, int sortMethod = 0) {
     cout << "         DAFTAR KANDIDAT PRESIDEN 2024         \n";
     cout << string(60, '=') << "\n\n";
 
-    // Gunakan metode sorting yang dipilih
-    switch (sortMethod) {
-        case 1:
-            quickSort(kandidat, 0, kandidat.size() - 1);
-            cout << "Menggunakan Quick Sort\n";
-            break;
-        case 2:
-            mergeSort(kandidat, 0, kandidat.size() - 1);
-            cout << "Menggunakan Merge Sort\n";
-            break;
-        default:
-            // Default menggunakan STL sort
-            sort(kandidat.begin(), kandidat.end(), 
-                 [](const Kandidat& a, const Kandidat& b) {
-                     return a.nomor < b.nomor;
-                 });
-            cout << "Menggunakan STL Sort\n";
-    }
+    // Always use STL sort with lambda for consistency
+    sort(kandidat.begin(), kandidat.end(), 
+         [](const Kandidat& a, const Kandidat& b) {
+             return a.nomor < b.nomor;
+         });
+    cout << "Menggunakan STL Sort\n";
 
     // Tampilkan kandidat menggunakan method struct
     for_each(kandidat.begin(), kandidat.end(), 
@@ -995,7 +948,10 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
     // Input nama voter
     string namaVoter;
     cout << "Masukkan nama lengkap Anda: ";
-    cin.ignore(); // Membersihkan buffer
+    // Clear any remaining newline from previous input
+    if (cin.peek() == '\n') {
+        cin.ignore();
+    }
     getline(cin, namaVoter);
     if (namaVoter.empty()) {
         cout << "\n" << string(50, '*') << "\n";
@@ -1009,10 +965,10 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
     cout << "Masukkan NIK Anda (16 digit): ";
     cin >> nik;
     
-    // Validasi panjang NIK
+    // Validasi panjang NIK terlebih dahulu
     if (nik.length() != 16) {
         cout << "\n" << string(50, '*') << "\n";
-        cout << "ERROR: NIK harus terdiri dari 16 digit!\n";
+        cout << "ERROR: NIK harus terdiri dari 16 digit angka!\n";
         cout << "NIK yang dimasukkan: " << nik << " (" << nik.length() << " digit)\n";
         cout << string(50, '*') << "\n";
         return;
@@ -1037,15 +993,17 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
     }
 
     // Validasi NIK menggunakan hash table
-    if (voterTable.hasVoted(nik)) {
+    VoteStatus voteStatus = voterTable.hasVoted(nik);
+    if (voteStatus == VoteStatus::AlreadyVoted) {
         cout << "\n" << string(50, '*') << "\n";
-        cout << "ERROR: NIK ini sudah terdaftar melakukan voting!\n";
+        cout << "ERROR: NIK ini tidak dapat melakukan voting!\n";
         cout << "NIK: " << nik << "\n";
         cout << "Satu NIK hanya dapat melakukan voting satu kali.\n";
         cout << "Jika ini adalah kesalahan, silakan hubungi admin.\n";
         cout << string(50, '*') << "\n";
         return;
     }
+    // Note: VoteStatus::NotFound is no longer possible due to auto-registration
 
     cout << "\nHalo " << namaVoter << "! Selamat datang di sistem voting.\n";
     cout << string(60, '-') << "\n";
@@ -1078,7 +1036,6 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
         if (konfirmasi == 'y' || konfirmasi == 'Y') {
             auto waktu = getCurrentTime();
             simpanVote(namaVoter, nik, pilihan, waktu);
-            voterTable.insert(nik);
             voterTable.markAsVoted(nik);
         } else {
             cout << "\n" << string(50, '-') << "\n";
@@ -1102,10 +1059,22 @@ void tampilkanHasil(const vector<Kandidat>& kandidat) {
 
     // Baca data voting untuk statistik
     auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
+    int totalAll     = allVotes.size();
+    int totalValid   = count_if(allVotes.begin(), allVotes.end(),
+                                [](auto& v){ return v.isValid; });
+    int totalInvalid = totalAll - totalValid;
+    cout << "Total Vote       : " << totalAll << " suara\n";
+    cout << "  - Vote Sah     : " << totalValid << " suara\n";
+    cout << "  - Vote Tidak Sah: " << totalInvalid << " suara\n\n";
     
     // Tampilkan hasil per kandidat
     cout << "HASIL VOTING PER KANDIDAT:\n";
     cout << string(60, '-') << "\n";
+    
+    if (totalAll==0) {
+        cout<<"Belum ada data voting untuk ditampilkan.\n";
+        return;
+    }
     
     // Urutkan kandidat berdasarkan jumlah suara
     vector<Kandidat> sortedKandidat = kandidat;
@@ -1114,10 +1083,9 @@ void tampilkanHasil(const vector<Kandidat>& kandidat) {
              return votesPerCandidate[a.nomor] > votesPerCandidate[b.nomor];
          });
 
-    int totalVotes = allVotes.size();
     for (const auto& k : sortedKandidat) {
         int votes = votesPerCandidate[k.nomor];
-        double percentage = totalVotes > 0 ? (votes * 100.0 / totalVotes) : 0;
+        double percentage = totalAll > 0 ? (votes * 100.0 / totalAll) : 0;
         int barLength = static_cast<int>(percentage * 0.5); // 50 karakter untuk 100%
         
         cout << left << setw(3) << k.nomor << ". "
@@ -1215,7 +1183,6 @@ void tampilkanHasil(const vector<Kandidat>& kandidat) {
     }
 
     setColor(7); // Reset warna ke default
-    tungguInput();
 }
 // Fungsi untuk verifikasi data voting
 void verifikasiDataVoting() {
@@ -1271,6 +1238,8 @@ void verifikasiDataVoting() {
             counter++;
         }
         catch (const exception& e) {
+            string errorMsg = "Error pada vote #" + to_string(counter) + ": " + string(e.what());
+            logError(errorMsg);
             cout << "  Error pada vote #" << counter << "!\n";
             cout << "   Error: " << e.what() << "\n";
             cout << "   Key: " << key << "\n";
@@ -1303,6 +1272,7 @@ void verifikasiDataVoting() {
     voteFile.close();
     keyFile.close();
     cout << string(70, '=') << "\n";
+    tungguInput();  // Add this line to wait for user input
 }
 
 // Fungsi untuk audit trail
@@ -1350,6 +1320,8 @@ void auditTrailVoting() {
             }
         }
         catch (const exception& e) {
+            string errorMsg = "Error pada vote #" + to_string(counter) + " dalam audit trail: " + string(e.what());
+            logError(errorMsg);
             cout << "⚠️  Error pada vote #" << counter << "!\n";
         }
         counter++;
@@ -1367,6 +1339,7 @@ void auditTrailVoting() {
     voteFile.close();
     keyFile.close();
     cout << string(70, '=') << "\n";
+    tungguInput();  // Add this line to wait for user input
 }
 
 // Tambahkan fungsi-fungsi analisis baru setelah fungsi auditTrailVoting
@@ -1452,7 +1425,9 @@ void tampilkanRantaiVoting() {
 
     // Tambahkan vote sah ke graph
     for (const auto& vote : voteSah) {
-        voteChain.addVote(vote.waktu, vote.nik, vote.pilihan);
+        if (isValidNIK(vote.nik) && vote.waktu.time_since_epoch().count()>0) {
+            voteChain.addVote(vote.waktu, vote.nik, vote.pilihan);
+        }
     }
 
     if (!voteSah.empty()) {
@@ -1518,6 +1493,12 @@ void tampilkanDistribusiVote(const vector<Kandidat>& kandidat) {
     // Analisis per kandidat
     cout << "DISTRIBUSI VOTE PER KANDIDAT:\n";
     cout << string(70, '-') << "\n";
+    
+    if (totalVoteSah==0) {
+        cout<<"Belum ada data voting untuk ditampilkan.\n";
+        return;
+    }
+    
     for (const auto& k : kandidat) {
         int jumlahVote = count_if(semuaVote.begin(), semuaVote.end(),
                                 [&k](const VoteData& vote) {
@@ -1606,12 +1587,18 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
 
     // Baca data voting
     auto [votesPerCandidate, allVotes] = bacaSemuaVotes();
+    int totalAll     = allVotes.size();
+    int totalValid   = count_if(allVotes.begin(), allVotes.end(),
+                                [](auto& v){ return v.isValid; });
+    int totalInvalid = totalAll - totalValid;
     
     // Tampilkan ringkasan statistik
     setColor(14); // Kuning
     cout << " RINGKASAN STATISTIK\n";
     cout << string(80, '-') << "\n";
-    cout << "Total Voting    : " << allVotes.size() << " suara\n";
+    cout << "Total Vote       : " << totalAll << " suara\n";
+    cout << "  - Vote Sah     : " << totalValid << " suara\n";
+    cout << "  - Vote Tidak Sah: " << totalInvalid << " suara\n";
     cout << "Total Kandidat  : " << kandidat.size() << " kandidat\n";
     cout << "Total Transaksi : " << allVotes.size() << " transaksi\n\n";
 
@@ -1619,6 +1606,11 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
     setColor(10); // Hijau
     cout << " DISTRIBUSI SUARA PER KANDIDAT\n";
     cout << string(80, '-') << "\n";
+    
+    if (totalAll==0) {
+        cout<<"Belum ada data voting untuk ditampilkan.\n";
+        return;
+    }
     
     // Urutkan kandidat berdasarkan jumlah suara
     vector<Kandidat> sortedKandidat = kandidat;
@@ -1743,9 +1735,7 @@ void tampilkanDashboardAdmin(const vector<Kandidat>& kandidat) {
     cout << "                       Total Record: " << allVotes.size() << " voting\n";
     cout << string(80, '=') << "\n\n";
 
-    cout << "Tekan tombol apapun untuk kembali ke menu admin...";
-    cin.ignore();
-    cin.get();
+    tungguInput();
 }
 
 void tampilkanDetailVoting() {
@@ -1851,6 +1841,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 // Implementasi main
 int main() {
     setupConsole();  // Set console encoding at program start
+    
     // Baca data kandidat
     vector<Kandidat> kandidat = bacaKandidat();
     if (kandidat.empty()) {
@@ -1863,7 +1854,6 @@ int main() {
         system("cls");
         tampilkanMenu();
         cin >> pilihan;
-        cin.ignore();
 
         switch (pilihan) {
             case 1:
@@ -1943,3 +1933,37 @@ void tampilkanMenu() {
     cout << string(60, '=') << "\n";
     cout << "Pilihan: ";
 }
+
+// Centralized NIK validation function
+bool isValidNIK(const string& nik) {
+    return nik.length() == 16 && all_of(nik.begin(), nik.end(), ::isdigit);
+}
+
+// Safe file writing function
+bool safeWriteToFile(const string& filename, const string& content) {
+    // Open file in append mode
+    ofstream file(filename, ios::app);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    // Append new content
+    file << content;
+    file.close();
+    
+    return true;
+}
+
+// Logging utility function
+void logError(const string& msg) {
+    ofstream logFile("error.log", ios::app);
+    if (logFile.is_open()) {
+        auto now = chrono::system_clock::now();
+        auto time = chrono::system_clock::to_time_t(now);
+        stringstream ss;
+        ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
+        logFile << "[" << ss.str() << "] ERROR: " << msg << "\n";
+        logFile.close();
+    }
+}
+
