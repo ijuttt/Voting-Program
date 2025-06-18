@@ -923,7 +923,6 @@ pair<map<int, int>, vector<VoteData>> bacaSemuaVotes() {
 }
 
 
-// Removed quickSort and mergeSort functions - using std::sort with lambda instead
 void merge(vector<Kandidat>& arr, int left, int mid, int right) {
     int n1 = mid - left + 1;
     int n2 = right - mid;
