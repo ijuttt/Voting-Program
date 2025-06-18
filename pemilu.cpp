@@ -40,7 +40,7 @@ extern VoterHashTable voterTable;
 // Konstanta untuk karakter Unicode
 const char BLOCK_CHAR[] = "\u2588"; // Karakter █ dalam UTF-8
 
-// Set console encoding to UTF-8 at program start
+// Fungsi agar program bisa menampilkan karakter unicode (simbol)
 void setupConsole() {
     #ifdef _WIN32
     // Set console ke mode UTF-8
@@ -575,9 +575,11 @@ public:
                     cout << string(50,'*') << "\n";
                 } else {
             it->second = true;
+            system("cls");
                     cout << "\n" << string(50, '-') << "\n";
                     cout << "NIK " << nik << " berhasil ditandai sebagai sudah voting.\n";
                     cout << string(50, '-') << "\n";
+                    this_thread::sleep_for(chrono::seconds(1));
                 }
     }
 };
@@ -821,16 +823,16 @@ vector<Kandidat> bacaKandidat() {
         while (getline(file, line)) {
             if (!line.empty()) {
                 // Format: nomor|nama|partai
-                size_t pos1 = line.find('|');
-                size_t pos2 = line.find('|', pos1 + 1);
-                if (pos1 != string::npos && pos2 != string::npos) {
-                    Kandidat k;
-                    k.nomor = stoi(line.substr(0, pos1));
-                    k.nama = line.substr(pos1 + 1, pos2 - pos1 - 1);
-                    k.partai = line.substr(pos2 + 1);
-                    kandidat.push_back(k);
-                    // Tambahkan ke AVL Tree
-                    kandidatTree.insert(k);
+                    size_t pos1 = line.find('|');
+                    size_t pos2 = line.find('|', pos1 + 1);
+                    if (pos1 != string::npos && pos2 != string::npos) {
+                        Kandidat k;
+                        k.nomor = stoi(line.substr(0, pos1));  //stoi untuk konversi string ke int
+                        k.nama = line.substr(pos1 + 1, pos2 - pos1 - 1);
+                        k.partai = line.substr(pos2 + 1);
+                        kandidat.push_back(k);
+                        // Tambahkan ke AVL Tree
+                        kandidatTree.insert(k);
                 }
             }
         }
@@ -919,25 +921,47 @@ pair<map<int, int>, vector<VoteData>> bacaSemuaVotes() {
     keyFile.close();
     return {hasilVote, semuaVote};
 }
-// Algoritma sorting alternatif
-// Removed quickSort and mergeSort functions - using std::sort with lambda instead
 
-// Modifikasi fungsi tampilkanKandidat untuk mendukung semua metode sorting
+
+// Removed quickSort and mergeSort functions - using std::sort with lambda instead
+void merge(vector<Kandidat>& arr, int left, int mid, int right) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+
+    vector<Kandidat> L(n1), R(n2);
+    for (int i = 0; i < n1; ++i) L[i] = arr[left + i];
+    for (int j = 0; j < n2; ++j) R[j] = arr[mid + 1 + j];
+
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        if (L[i].nomor <= R[j].nomor) arr[k++] = L[i++];
+        else arr[k++] = R[j++];
+    }
+
+    while (i < n1) arr[k++] = L[i++];
+    while (j < n2) arr[k++] = R[j++];
+}
+
+void mergeSort(vector<Kandidat>& arr, int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+        mergeSort(arr, left, mid);
+        mergeSort(arr, mid + 1, right);
+        merge(arr, left, mid, right);
+    }
+}
+
 void tampilkanKandidat(vector<Kandidat>& kandidat, int sortMethod = 0) {
     system("cls");
     cout << "\n" << string(60, '=') << "\n";
-    cout << "         DAFTAR KANDIDAT PRESIDEN 2024         \n";
+    cout << "         DAFTAR KANDIDAT PRESIDEN 2029         \n";
     cout << string(60, '=') << "\n\n";
 
-    // Always use STL sort with lambda for consistency
-            sort(kandidat.begin(), kandidat.end(), 
-                 [](const Kandidat& a, const Kandidat& b) {
-                     return a.nomor < b.nomor;
-                 });
-            cout << "Menggunakan STL Sort\n";
+    // Ganti STL sort dengan Merge Sort
+    mergeSort(kandidat, 0, kandidat.size() - 1);
+    cout << "Menggunakan Merge Sort\n";
 
-    // Tampilkan kandidat menggunakan method struct
-    for_each(kandidat.begin(), kandidat.end(), 
+    for_each(kandidat.begin(), kandidat.end(),
              [](const Kandidat& k) {
                  k.tampilkan();
              });
@@ -1010,6 +1034,7 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
     }
     // Note: VoteStatus::NotFound is no longer possible due to auto-registration
 
+    system("cls");
     cout << "\nHalo " << namaVoter << "! Selamat datang di sistem voting.\n";
     cout << string(60, '-') << "\n";
     // Tampilkan kandidat dalam format ringkas
@@ -1027,6 +1052,7 @@ void lakukanVoting(const vector<Kandidat>& kandidat) {
                           return k.nomor == pilihan;
                       });
     if (it != kandidat.end()) {
+        system("cls");
         cout << "\n" << string(50, '=') << "\n";
         cout << "KONFIRMASI PILIHAN ANDA:\n";
         cout << string(50, '-') << "\n";
@@ -1912,7 +1938,6 @@ void setColor(int color) {
 #endif
 }
 
-// Deklarasi main sebelum WinMain
 int main();
 
 #ifdef _WIN32
@@ -2050,4 +2075,3 @@ void logError(const string& msg) {
         logFile.close();
     }
 }
-
